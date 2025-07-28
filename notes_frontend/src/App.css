@@ -23,8 +23,16 @@
 .notesapp {
   min-height: 100vh;
   font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
-  background: var(--background);
   color: var(--text-primary);
+}
+
+/* Fixed food-image backgrounds and overlays, covered by app content */
+.notesapp__background {
+  will-change: background-image;
+}
+
+.notesapp__overlay {
+  /* overlays above bg, behind content */
 }
 .main-wrapper {
   display: flex;

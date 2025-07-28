@@ -1,6 +1,45 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
 
+// Image background config
+const BG_IMAGES = [
+  {
+    key: "potato",
+    label: "Potato Cakes",
+    file: "/images/20250728_044641_AR-223597-old-fashioned-potato-cakes-DDMFS-044-2x1-651634faa2d146709f3886c5e19aeed4.jpg",
+    overlay: "rgba(255,255,255,0.6)",
+    blur: "6px",
+    position: "center",
+    usage: "main"
+  },
+  {
+    key: "ratatouille",
+    label: "Ratatouille",
+    file: "/images/20250728_044641_Ratatouille-recipe-500x500.jpg",
+    overlay: "rgba(255,255,255,0.62)",
+    blur: "8px",
+    position: "center",
+    usage: "main"
+  },
+  {
+    key: "shakshuka",
+    label: "Shakshuka",
+    file: "/images/20250728_044642_opt__aboutcom__coeus__resources__content_migration__serious_eats__seriouseats.com__recipes__images__2016__09__20160926-shakshuka-17-a2b1d35f5ce146d1b8f5e2851e73b487.jpg",
+    overlay: "rgba(255,255,255,0.77)",
+    blur: "4px",
+    position: "center",
+    usage: "main"
+  },
+  {
+    key: "garlic-steak",
+    label: "Steak & Potatoes",
+    file: "/images/20250728_044643_garlic-steak-bites-potatoes-recipe-3-edited.jpg",
+    overlay: "rgba(255,255,255,0.7)",
+    blur: "7px",
+    position: "center",
+    usage: "sidebar"
+  }
+];
 /**
  * Color palette by request for theme:
  *   accent:   #ff9800
@@ -37,17 +76,28 @@ const seedCategories = [
 function App() {
   // Note structure: { id, title, body, tags:[], created, updated }
   const [notes, setNotes] = useState(() => {
-    // Try to load from localStorage for persistence
     const data = localStorage.getItem("notes");
     return data ? JSON.parse(data) : [];
   });
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [categories, setCategories] = useState(seedCategories);
-  const [editingNote, setEditingNote] = useState(null); // note or null
+  const [editingNote, setEditingNote] = useState(null);
   const [showNoteModal, setShowNoteModal] = useState(false);
-  const [modalMode, setModalMode] = useState("create"); // 'create' or 'edit'
+  const [modalMode, setModalMode] = useState("create");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // === Background theme selection state ===
+  const [background, setBackground] = useState(() => {
+    // Persist user selection in localStorage
+    const stored = localStorage.getItem("notesapp-bg") || "ratatouille";
+    return (BG_IMAGES.find(b => b.key === stored) ? stored : "ratatouille");
+  });
+  const selectedBg = BG_IMAGES.find(b => b.key === background) || BG_IMAGES[0];
+
+  useEffect(() => {
+    localStorage.setItem("notesapp-bg", background);
+  }, [background]);
 
   // Persist notes to localStorage
   useEffect(() => {
@@ -154,52 +204,93 @@ function App() {
   return (
     <div
       className="notesapp"
-      style={{ background: THEME_COLORS.background, minHeight: "100vh" }}
+      style={{
+        minHeight: "100vh",
+        position: "relative"
+      }}
     >
-      <Header accent={THEME_COLORS.accent} primary={THEME_COLORS.primary} handleSidebarToggle={handleSidebarToggle} />
-      <div className="main-wrapper">
-        {/* SIDEBAR */}
-        <Sidebar
-          categories={categories}
-          selectedCategory={selectedCategory}
-          onSelectCategory={setSelectedCategory}
-          sidebarOpen={sidebarOpen}
-          setSidebarOpen={setSidebarOpen}
-        />
-        {/* CONTENT */}
-        <main className="main-content">
-          <div className="content-header">
-            <SearchBar
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              accent={THEME_COLORS.accent}
-            />
-          </div>
-          <NotesList
-            notes={filteredNotes}
-            onEdit={handleShowEdit}
-            onDelete={handleDeleteNote}
-          />
-          <FloatingActionButton
-            onClick={handleShowCreate}
-            accent={THEME_COLORS.accent}
-          />
-        </main>
-      </div>
-      {showNoteModal && (
-        <NoteModal
-          mode={modalMode}
-          note={editingNote}
-          onCancel={() => {
-            setShowNoteModal(false);
-            setEditingNote(null);
-          }}
-          onSave={modalMode === "create" ? handleCreateNote : handleEditNote}
+      {/* Visual background + overlay */}
+      <div
+        className="notesapp__background"
+        style={{
+          position: "fixed",
+          zIndex: 0,
+          inset: 0,
+          pointerEvents: "none",
+          backgroundImage: selectedBg.file ? `url('${selectedBg.file}')` : "none",
+          backgroundSize: "cover",
+          backgroundPosition: selectedBg.position,
+          transition: "background-image 0.4s",
+          minHeight: "100vh"
+        }}
+      />
+      <div
+        className="notesapp__overlay"
+        style={{
+          position: "fixed",
+          zIndex: 1,
+          inset: 0,
+          background: selectedBg.overlay,
+          backdropFilter: `blur(${selectedBg.blur})`,
+          pointerEvents: "none",
+          minHeight: "100vh"
+        }}
+      />
+      <div style={{ position: "relative", zIndex: 2, minHeight: "100vh" }}>
+        <Header accent={THEME_COLORS.accent} primary={THEME_COLORS.primary} handleSidebarToggle={handleSidebarToggle} />
+
+        {/* Background selector UI */}
+        <ThemeSelector
+          value={background}
+          onChange={setBackground}
           accent={THEME_COLORS.accent}
         />
-      )}
-      <div className="footer-note">
-        <span>Notes App &middot; {new Date().getFullYear()} · Modern Minimalist UI</span>
+
+        <div className="main-wrapper">
+          {/* SIDEBAR with optional food background for sidebar */}
+          <Sidebar
+            categories={categories}
+            selectedCategory={selectedCategory}
+            onSelectCategory={setSelectedCategory}
+            sidebarOpen={sidebarOpen}
+            setSidebarOpen={setSidebarOpen}
+            bgTheme={background}
+          />
+          {/* CONTENT */}
+          <main className="main-content">
+            <div className="content-header">
+              <SearchBar
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                accent={THEME_COLORS.accent}
+              />
+            </div>
+            <NotesList
+              notes={filteredNotes}
+              onEdit={handleShowEdit}
+              onDelete={handleDeleteNote}
+            />
+            <FloatingActionButton
+              onClick={handleShowCreate}
+              accent={THEME_COLORS.accent}
+            />
+          </main>
+        </div>
+        {showNoteModal && (
+          <NoteModal
+            mode={modalMode}
+            note={editingNote}
+            onCancel={() => {
+              setShowNoteModal(false);
+              setEditingNote(null);
+            }}
+            onSave={modalMode === "create" ? handleCreateNote : handleEditNote}
+            accent={THEME_COLORS.accent}
+          />
+        )}
+        <div className="footer-note">
+          <span>Notes App &middot; {new Date().getFullYear()} · Modern Minimalist UI</span>
+        </div>
       </div>
     </div>
   );
@@ -232,15 +323,98 @@ function Header({ accent, primary, handleSidebarToggle }) {
   );
 }
 
-// Sidebar for categories/tags
-function Sidebar({ categories, selectedCategory, onSelectCategory, sidebarOpen, setSidebarOpen }) {
+/** PUBLIC_INTERFACE
+ * ThemeSelector – select which food image is used as background
+ */
+function ThemeSelector({ value, onChange, accent }) {
+  return (
+    <div style={{
+      position: "absolute",
+      top: 12,
+      right: 22,
+      zIndex: 101,
+      userSelect: "none"
+    }}>
+      <label style={{
+        fontWeight: 500, color: accent, marginRight: 8, background: "rgba(255,255,255,0.89)", borderRadius: 6, padding: "1px 8px", fontSize: "0.98em"
+      }}>
+        Background:
+      </label>
+      <select
+        value={value}
+        style={{
+          padding: "4px 11px",
+          borderRadius: 6,
+          fontSize: "1em",
+          border: `1px solid ${accent}`,
+          background: "#fff9f4",
+          color: accent,
+          outlineColor: accent
+        }}
+        onChange={e => onChange(e.target.value)}
+        aria-label="Select background image"
+      >
+        {BG_IMAGES.map(bg => (
+          <option value={bg.key} key={bg.key}>
+            {bg.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+// Sidebar for categories/tags – supports optional sidebar-specific background
+function Sidebar({ categories, selectedCategory, onSelectCategory, sidebarOpen, setSidebarOpen, bgTheme }) {
+  // Show steak & potatoes image only if corresponding theme is selected
+  const bg = BG_IMAGES.find(bg => bg.key === bgTheme);
+  const isSidebarBg = bg && bg.usage === "sidebar";
+  const bgImage = isSidebarBg ? bg.file : undefined;
+  const overlay = isSidebarBg ? bg.overlay : undefined;
+  const blur = isSidebarBg ? bg.blur : undefined;
+
   return (
     <aside
       className={`sidebar${sidebarOpen ? " open" : ""}`}
       tabIndex="-1"
       aria-label="Categories"
+      style={
+        isSidebarBg
+          ? {
+              position: "relative",
+              background: "none",
+              boxShadow: "0 2px 16px rgba(123,72,36,0.08)"
+            }
+          : {}
+      }
     >
-      <nav>
+      {isSidebarBg && (
+        <>
+          <div
+            style={{
+              position: "absolute",
+              zIndex: 0,
+              inset: 0,
+              backgroundImage: `url('${bgImage}')`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              opacity: 0.84,
+              pointerEvents: "none"
+            }}
+          ></div>
+          <div
+            style={{
+              position: "absolute",
+              zIndex: 1,
+              inset: 0,
+              background: overlay,
+              backdropFilter: `blur(${blur})`,
+              pointerEvents: "none"
+            }}
+          ></div>
+        </>
+      )}
+      <nav style={isSidebarBg ? { position: "relative", zIndex: 2 } : {}}>
         <div className="sidebar-title">Categories</div>
         <ul>
           {categories.map(cat => (
